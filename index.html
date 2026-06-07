@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Task Board</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --purple-deep: #3d1a6e;
+      --purple-mid: #7c3aed;
+      --purple-light: #a855f7;
+      --purple-pale: #f3e8ff;
+      --pink-accent: #ec4899;
+      --bg: #f5f0ff;
+      --col-todo: #6d28d9;
+      --col-inprog: #7c3aed;
+      --col-done: #8b5cf6;
+      --white: #ffffff;
+      --text-dark: #1e1040;
+      --text-mid: #4c1d95;
+      --shadow: 0 8px 32px rgba(109,40,217,0.18);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      padding: 0 0 40px;
+      background-image:
+        radial-gradient(ellipse at 10% 20%, rgba(168,85,247,0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 80%, rgba(236,72,153,0.13) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.07) 0%, transparent 70%);
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--purple-deep) 0%, var(--purple-mid) 60%, var(--pink-accent) 100%);
+      padding: 28px 40px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 24px rgba(61,26,110,0.25);
+    }
+
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .task-count {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* ── Form ── */
+    #task-form {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 28px 20px 8px;
+    }
+
+    #task-input {
+      padding: 12px 20px;
+      width: 300px;
+      border: 2px solid rgba(124,58,237,0.25);
+      border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      background: var(--white);
+      color: var(--text-dark);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #task-input:focus {
+      border-color: var(--purple-mid);
+      box-shadow: 0 0 0 4px rgba(124,58,237,0.12);
+    }
+
+    #task-input::placeholder { color: #b39ddb; }
+
+    #task-form button {
+      padding: 12px 26px;
+      background: linear-gradient(135deg, var(--purple-mid), var(--pink-accent));
+      border: none;
+      color: #fff;
+      border-radius: 12px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+    }
+
+    #task-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(124,58,237,0.45);
+    }
+
+    #task-form button:active { transform: translateY(0); }
+
+    /* ── Board ── */
+    .board {
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      padding: 24px 30px;
+      flex-wrap: wrap;
+    }
+
+    .column {
+      background: linear-gradient(160deg, rgba(109,40,217,0.85) 0%, rgba(124,58,237,0.9) 100%);
+      backdrop-filter: blur(8px);
+      padding: 0;
+      width: 300px;
+      border-radius: var(--radius);
+      min-height: 360px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.15);
+      overflow: hidden;
+      transition: box-shadow 0.25s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .column.dragover {
+      box-shadow: 0 0 0 3px var(--pink-accent), var(--shadow);
+    }
+
+    .col-header {
+      padding: 18px 20px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .col-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #todo .col-dot    { background: #facc15; }
+    #in-progress .col-dot { background: #38bdf8; }
+    #done .col-dot    { background: #4ade80; }
+
+    .column h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex: 1;
+    }
+
+    .col-count {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.65);
+      background: rgba(255,255,255,0.12);
+      padding: 3px 9px;
+      border-radius: 10px;
+    }
+
+    .col-body {
+      padding: 14px 14px;
+      flex: 1;
+      min-height: 280px;
+    }
+
+    /* ── Tasks ── */
+    .task {
+      background: var(--white);
+      padding: 13px 14px;
+      margin: 0 0 10px;
+      cursor: grab;
+      border-radius: 11px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: fadeSlide 0.35s ease forwards;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.25s;
+      border-left: 3px solid transparent;
+      word-break: break-word;
+    }
+
+    #todo .task       { border-left-color: #facc15; }
+    #in-progress .task { border-left-color: #38bdf8; }
+    #done .task        { border-left-color: #4ade80; }
+
+    .task:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(109,40,217,0.14);
+    }
+
+    .task.dragging {
+      opacity: 0.45;
+      transform: scale(1.04) rotate(1.5deg);
+      box-shadow: 0 12px 30px rgba(109,40,217,0.3);
+      cursor: grabbing;
+    }
+
+    .task .task-text { flex: 1; }
+
+    .task.completed .task-text {
+      text-decoration: line-through;
+      color: #9ca3af;
+    }
+
+    /* checkbox inside done column */
+    .task input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: #4ade80;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* delete button */
+    .task .del-btn {
+      background: none;
+      border: none;
+      color: #d1b3f8;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .task:hover .del-btn { opacity: 1; }
+    .task .del-btn:hover  { color: var(--pink-accent); }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* empty state */
+    .empty-state {
+      text-align: center;
+      color: rgba(255,255,255,0.35);
+      font-size: 0.82rem;
+      padding: 30px 0 10px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Task Board</h1>
+  <span class="task-count" id="total-count">0 tasks</span>
+</header>
+
+<form id="task-form">
+  <input type="text" id="task-input" placeholder="Add a new task…" required>
+  <button type="submit">+ Add Task</button>
+</form>
+
+<div class="board">
+  <div class="column" id="todo">
+    <div class="col-header">
+      <span class="col-dot"></span>
+      <h2>To Do</h2>
+      <span class="col-count" id="count-todo">0</span>
+    </div>
+    <div class="col-body" id="body-todo"></div>
+  </div>
+
+  <div class="column" id="in-progress">
+    <div class="col-header">
+      <span class="col-dot"></span>
+      <h2>In Progress</h2>
+      <span class="col-count" id="count-inprog">0</span>
+    </div>
+    <div class="col-body" id="body-inprog"></div>
+  </div>
+
+  <div class="column" id="done">
+    <div class="col-header">
+      <span class="col-dot"></span>
+      <h2>Done</h2>
+      <span class="col-count" id="count-done">0</span>
+    </div>
+    <div class="col-body" id="body-done"></div>
+  </div>
+</div>
+
+<script>
+  // ─── helpers ───────────────────────────────────────────
+  function updateCounts() {
+    const t = document.querySelectorAll('#body-todo .task').length;
+    const p = document.querySelectorAll('#body-inprog .task').length;
+    const d = document.querySelectorAll('#body-done .task').length;
+    document.getElementById('count-todo').textContent  = t;
+    document.getElementById('count-inprog').textContent = p;
+    document.getElementById('count-done').textContent  = d;
+    document.getElementById('total-count').textContent = (t+p+d) + ' task' + (t+p+d !== 1 ? 's' : '');
+
+    // show/hide empty states
+    ['body-todo','body-inprog','body-done'].forEach(id => {
+      const body = document.getElementById(id);
+      let em = body.querySelector('.empty-state');
+      if (body.querySelectorAll('.task').length === 0) {
+        if (!em) { em = document.createElement('p'); em.className = 'empty-state'; em.textContent = 'Drop tasks here'; body.appendChild(em); }
+      } else {
+        if (em) em.remove();
+      }
+    });
+  }
+
+  // ─── create task card ───────────────────────────────────
+  function createTask(text, isDone = false) {
+    const task = document.createElement('div');
+    task.className = 'task';
+    task.setAttribute('draggable', 'true');
+
+    // checkbox (only shown when in done column, but we always create it)
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = isDone;
+    cb.style.display = 'none';
+
+    const span = document.createElement('span');
+    span.className = 'task-text';
+    span.textContent = text;
+
+    const del = document.createElement('button');
+    del.className = 'del-btn';
+    del.innerHTML = '✕';
+    del.title = 'Delete task';
+    del.onclick = () => { task.remove(); updateCounts(); };
+
+    task.appendChild(cb);
+    task.appendChild(span);
+    task.appendChild(del);
+
+    cb.addEventListener('change', () => {
+      task.classList.toggle('completed', cb.checked);
+    });
+
+    if (isDone) task.classList.add('completed');
+
+    // drag events
+    task.addEventListener('dragstart', () => task.classList.add('dragging'));
+    task.addEventListener('dragend',   () => { task.classList.remove('dragging'); updateCounts(); });
+
+    return task;
+  }
+
+  // ─── drop zones ────────────────────────────────────────
+  const bodies = {
+    'body-todo':   document.getElementById('body-todo'),
+    'body-inprog': document.getElementById('body-inprog'),
+    'body-done':   document.getElementById('body-done'),
+  };
+
+  Object.entries(bodies).forEach(([id, body]) => {
+    body.addEventListener('dragover', e => {
+      e.preventDefault();
+      const dragging = document.querySelector('.dragging');
+      if (!dragging) return;
+
+      body.classList.add('dragover');
+
+      // insert before nearest sibling
+      const afterEl = getDragAfterElement(body, e.clientY);
+      if (afterEl == null) body.appendChild(dragging);
+      else body.insertBefore(dragging, afterEl);
+
+      // show/hide checkbox depending on column
+      const cb   = dragging.querySelector('input[type="checkbox"]');
+      const isDoneCol = (id === 'body-done');
+      cb.style.display = isDoneCol ? 'block' : 'none';
+      if (!isDoneCol) { dragging.classList.remove('completed'); cb.checked = false; }
+    });
+
+    body.addEventListener('dragleave', () => body.classList.remove('dragover'));
+    body.addEventListener('drop',      () => { body.classList.remove('dragover'); updateCounts(); });
+  });
+
+  function getDragAfterElement(container, y) {
+    const els = [...container.querySelectorAll('.task:not(.dragging)')];
+    return els.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset, element: el };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  // ─── also allow dropping on column wrapper (top area) ──
+  document.querySelectorAll('.column').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('dragover'); });
+    col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+    col.addEventListener('drop', () => col.classList.remove('dragover'));
+  });
+
+  // ─── form submit ───────────────────────────────────────
+  const form  = document.getElementById('task-form');
+  const input = document.getElementById('task-input');
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const task = createTask(text);
+    bodies['body-todo'].appendChild(task);
+    input.value = '';
+    input.focus();
+    updateCounts();
+  });
+
+  // ─── init ──────────────────────────────────────────────
+  updateCounts();
+</script>
+</body>
+</html>
